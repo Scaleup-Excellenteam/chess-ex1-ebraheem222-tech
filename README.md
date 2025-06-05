@@ -2,6 +2,19 @@
 <tr style="border: none">
 <td style="border: none">
 
+
+# Algorithm Overview
+
+Gather all legal moves (src→dest) for the side to move.
+
+Split that move list into equal “chunks,” one per thread.
+
+Each thread evaluates its chunk with evaluateMove(…), maintaining a small local priority queue of its best candidates.
+
+When a thread finishes, it merges its top candidates into a single global priority queue under a short‐lived mutex lock.
+
+Finally, we extract the top‐N moves (by descending score) from the global queue.
+
 # THE Chess Template Repository
 
 </td>
