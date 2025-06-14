@@ -1,40 +1,115 @@
-// Chess 
-#include "Chess.h"
 
-int main()
-{
-	string board = "RNBQKBNRPPPPPPPP################################pppppppprnbqkbnr"; 
-//	string board = "##########K###############################R#############r#r#####";
-	Chess a(board);
-	int codeResponse = 0;
-	string res = a.getInput();
-	while (res != "exit")
-	{
-		/* 
-		codeResponse value : 
-		Illegal movements : 
-		11 - there is not piece at the source  
-		12 - the piece in the source is piece of your opponent
-		13 - there one of your pieces at the destination 
-		21 - illegal movement of that piece 
-		31 - this movement will cause you checkmate
+#include <iostream>
+#include <string>
+#include "../include/Chess.h"
+#include "../include/Board.h"
+#include "../include/MoveRecommendation.h"
 
-		legal movements : 
-		41 - the last movement was legal and cause check 
-		42 - the last movement was legal, next turn 
-		*/
+using namespace std;
 
-		/**/ 
-		{ // put your code here instead that code
-			cout << "code response >> ";
-			cin >> codeResponse;
-		}
-		/**/
+int main() {
+    Chess gui;
 
-		a.setCodeResponse(codeResponse);
-		res = a.getInput(); 
-	}
+    const string startingBoard =
+        "RNBQKBNR"
+        "PPPPPPPP"
+        "########"
+        "########"
+        "########"
+        "########"
+        "pppppppp"
+        "rnbqkbnr";
 
-	cout << endl << "Exiting " << endl; 
-	return 0;
+    Board board;
+    board.initializeFromString(startingBoard);
+
+    bool myTurn = true; // true = White to move, false = Black to move
+
+    {
+        auto suggestions = recommendMoves(board, /*isWhiteTurn=*/ myTurn, /*depth=*/ 2, /*topN=*/ 1);
+        if (!suggestions.empty()) {
+            string text = "Recommended move: ";
+            text += char('a' + suggestions[0].src.first);
+            text += char('1' + suggestions[0].src.second);
+            text += " ";
+            text += char('a' + suggestions[0].dest.first);
+            text += char('1' + suggestions[0].dest.second);
+            Chess::setRecommendation(text);
+        } else {
+            Chess::setRecommendation("Recommended move: (none)");
+        }
+    }
+
+    while (true) {
+
+        string move = gui.getInput();
+        if (move == "exit") {
+            break;
+        }
+        int sr = move[1] - '1';
+        int sc = move[0] - 'a';
+        int dr = move[3] - '1';
+        int dc = move[2] - 'a';
+        Position src{ sc, sr };
+        Position dest{ dc, dr };
+
+        Piece* piece = board.getPieceAt(src);
+        int response;
+
+        if (!piece) {
+            response = 11;
+        }
+        else if ((piece->getColor() == Color::WHITE) != myTurn) {
+            response = 12;
+        }
+        else {
+            Piece* destPiece = board.getPieceAt(dest);
+            if (destPiece && destPiece->getColor() == piece->getColor()) {
+                response = 13;
+            }
+            else if (!piece->canMove(board, src, dest)) {
+                response = 21;
+            }
+            else {
+                auto testBoard = board.clone();
+                testBoard->movePiece(src, dest);
+                if (testBoard->isInCheck(piece->getColor())) {
+                    response = 31;
+                }
+                else {
+                    board.movePiece(src, dest);
+                    Color opp = (piece->getColor() == Color::WHITE ? Color::BLACK : Color::WHITE);
+                    if (board.isInCheck(opp)) {
+                        response = 41;
+                    }
+                    else {
+                        response = 42;
+                    }
+                }
+            }
+        }
+
+        gui.setCodeResponse(response);
+
+        if (response == 41 || response == 42) {
+            myTurn = !myTurn;
+        }
+
+        {
+            auto suggestions = recommendMoves(board, myTurn, /*depth=*/ 2, /*topN=*/ 1);
+            if (!suggestions.empty()) {
+                string text = "Recommended move: ";
+                text += char('a' + suggestions[0].src.first);
+                text += char('1' + suggestions[0].src.second);
+                text += " ";
+                text += char('a' + suggestions[0].dest.first);
+                text += char('1' + suggestions[0].dest.second);
+                Chess::setRecommendation(text);
+            } else {
+                Chess::setRecommendation("Recommended move: (none)");
+            }
+        }
+    }
+
+    return 0;
 }
